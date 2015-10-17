@@ -3,8 +3,6 @@
 
 #include <unistd.h>
 #include <stdio.h>
-#include <helpers.h>
-#include <bufio.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -14,21 +12,6 @@
 #include <string.h>
 
 
-struct execargs_t {
-	char* file;
-	char** args;	
-};
-
-
-// Constructor for execargs structure
-execargs_t* new_execargs_t (char* file, char** args) {
-	execargs_t* new_execargs = (execargs_t*)malloc(sizeof(execargs_t));
-	new_execargs->file = file;
-	new_execargs->args = args;
-	return new_execargs;
-}
-
-
 
 // Empty signal handler for SIGINT and SIGCHLD interception
 void signal_handler(int signo) {
@@ -36,7 +19,7 @@ void signal_handler(int signo) {
 }
 
 //Runs the sequence of the programs
-int runpiped(execargs_t** programs, size_t n) {
+int runpiped(char*** programs, size_t n) {
     
     sigset_t mask;
     siginfo_t info;
@@ -95,7 +78,7 @@ int runpiped(execargs_t** programs, size_t n) {
             }
             //sigprocmask(SIG_UNBLOCK, &mask, NULL);
             // exec the program
-            return execvp(programs[i]->file, programs[i]->args);          
+            return execvp(programs[i][0], programs[i]);          
         } else {
             children[i] = pid;
             alive++;
@@ -171,7 +154,7 @@ int main() {
     
 	while(1) {
         write(STDOUT_FILENO, &dollar, 3);
-        execargs_t** programs = (execargs_t**)malloc(sizeof(execargs_t*)*20);
+        char*** programs = (char***)malloc(sizeof(char**)*20);
 	    fgets(buf, 2048, stdin); 
         count = strlen(buf);
         
@@ -221,7 +204,7 @@ int main() {
                 arg = strtok(NULL, space);
             }
             args[arg_count] = 0;
-            programs[i] = new_execargs_t(name, args);
+            programs[i] = args;
         }
         free(programs_lines);
 

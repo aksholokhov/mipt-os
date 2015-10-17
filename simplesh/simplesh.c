@@ -99,6 +99,7 @@ int runpiped(char*** programs, size_t n) {
         switch(info.si_signo) {
             // if one of the children changed his state - terminate everything and exit
             case SIGCHLD:
+                if (children[n-1] == info.si_pid)
                 while ((pid = waitpid(-1, NULL, WNOHANG)) > 0) {
                     for (int i = 0; i < n; i++) {
                         if (children[i] == pid) {

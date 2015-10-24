@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <time.h>
 #include <stdlib.h>
+#include <pwd.h>
 
 int a = 0;
 int l = 0;
@@ -18,7 +19,6 @@ int n = 0;
 int r = 0;
 
 void parse_permissions(char* buf, mode_t mode) {
-    buf[0] = 'd';
     buf[1] = mode & S_IRUSR ? 'r' : '-';
     buf[2] = mode & S_IWUSR ? 'w' : '-'; 
     buf[3] = mode & S_IXUSR ? 'x' : '-';
@@ -57,8 +57,21 @@ int walk_dir(char* path) {
     closedir(dir);
 }
 
+char parse_type(unsigned char type) {
+    switch (type) {
+        case DT_BLK: return 'b';
+        case DT_CHR: return 'c';
+        case DT_DIR: return 'd';
+        case DT_FIFO: return 'p';
+        case DT_LNK: return 'l';
+        case DT_REG: return '-';
+        case DT_SOCK: return 's';
+        case DT_UNKNOWN: return 'u';
+    }
+    return '-';
+}
 
-void stat_item(char* path, char* name) {
+void stat_item(char* path, char* name, unsigned char type) {
     struct stat* st = (struct stat*)malloc(sizeof(struct stat));
     if (stat(path, st) == -1) {
         printf("%s:\n", path);
@@ -70,6 +83,7 @@ void stat_item(char* path, char* name) {
         perror("time:");   
     }
     char* permissions = (char*)malloc(12*sizeof(char));
+    permissions[0] = parse_type(type);
     parse_permissions(permissions, st->st_mode);
     if (l) {
         printf("%s %d %d %d %s %s\n", permissions, st->st_nlink, st->st_uid, st->st_gid, time, name);
@@ -93,7 +107,7 @@ int listdir(char* path) {
         strcat(path, "/");
         if (item->d_name[0] != '.' || a) {     
             strcat(path, item->d_name);
-            (n | l) ? stat_item(path, item->d_name) : printf("%s ", item->d_name);
+            (n | l) ? stat_item(path, item->d_name, item->d_type) : printf("%s ", item->d_name);
         }
         path[path_len] = 0;
         item = readdir(dir);

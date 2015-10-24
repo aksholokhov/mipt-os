@@ -12,6 +12,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <pwd.h>
+#include <grp.h>
 
 int a = 0;
 int l = 0;
@@ -55,6 +56,7 @@ int walk_dir(char* path) {
         item = readdir(dir);
     }
     closedir(dir);
+    return 0;
 }
 
 char parse_type(unsigned char type) {
@@ -86,10 +88,10 @@ void stat_item(char* path, char* name, unsigned char type) {
     permissions[0] = parse_type(type);
     parse_permissions(permissions, st->st_mode);
     if (l) {
-        printf("%s %d %d %d %s %s\n", permissions, st->st_nlink, st->st_uid, st->st_gid, time, name);
+        printf("%s %d %s %s %s %s\n", permissions, (int)st->st_nlink, getpwuid(st->st_uid)->pw_name, getgrgid(st->st_gid)->gr_name, time, name);
     }
     else if (n) {
-        printf("%s %d %d %d %s %s\n", permissions, st->st_nlink, st->st_uid, st->st_gid, time, name);
+        printf("%s %d %d %d %s %s\n", permissions, (int)st->st_nlink, st->st_uid, st->st_gid, time, name);
     }
     free(time);
 }   
@@ -131,7 +133,6 @@ int main(int argc, char** argv) {
     char* flag_r = "-R";
     
     //parse args
-    //printf("%d", argc);
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], flag_l) == 0) {
             l = 1;
@@ -146,7 +147,6 @@ int main(int argc, char** argv) {
             r = 1;
         }
         else if (i == argc -1) {
-           // printf("path = %s", path);
             strncpy(path, argv[i], 1024);
         }
         else {

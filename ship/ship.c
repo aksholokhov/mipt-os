@@ -19,12 +19,14 @@
 #define SHIP_CAPACITY 3
 
 int main(int argc, char** argv) {
+    //We'll use 2 semaphores: the first for "tickets for in" and
+    //the second for "tickets for out"
     int sem_id = semget(IPC_PRIVATE, 2, IPC_CREAT | S_IRWXU);
     if (sem_id == -1) {
         perror("fail to create semaphore");
     } 
     int p_pid[PNUM];
-    //initialize shared memory for current number of people on the beach
+    //We'll use shared memory for current number of people on the beach
     int key = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | S_IRWXU);
     int* p_num = (int*)shmat(key, NULL, 0);
     *p_num = PNUM;
@@ -36,7 +38,6 @@ int main(int argc, char** argv) {
         struct sembuf sb;
         while(*p_num > 0) {    
             sb.sem_num = 0;
-            //printf("PNUM = %d \n", *p_num);
             sb.sem_op = (SHIP_CAPACITY > *p_num) ? *p_num : SHIP_CAPACITY;
             sb.sem_flg = 0;
             printf("CAPTAIN: Desk has opened for boarding\n");
@@ -69,6 +70,7 @@ int main(int argc, char** argv) {
             sleep(1);
         }
         printf("CAPTAIN: We finished!\n");
+        shmdt(p_num);
         return 0;
     }
     else {
@@ -100,6 +102,7 @@ int main(int argc, char** argv) {
                     } else {
                         printf("was tired: went home.\n");
                         (*p_num)--;
+                        shmdt(p_num);
                         return 0;
                     }
                 }
@@ -115,5 +118,8 @@ int main(int argc, char** argv) {
         kill(p_pid[i], SIGKILL);
         waitpid(p_pid[i], &status, 0);
     }
+    shmdt(p_num);
+    shmctl(key, IPC_RMID, NULL);
+    semctl(sem_id, 0, IPC_RMID);
     return 0;
 }

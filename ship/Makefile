@@ -2,7 +2,7 @@ CC = gcc
 CC_OPTS = -Wall -g -O2 -std=c99 -I../lib -D_XOPEN_SOURCE=500
 LD_OPTS = -L../lib 
 
-PROGRAM = ship
+PROGRAM = ship2
 
 all: $(PROGRAM)
 

@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
  
  
-TEST(HashMapTest, InsertGetBasicCorrectness) {
+TEST(HashMapTests, InsertGetBasicCorrectness) {
     int dataSize = 10;
     int hashBasketsNum = 5;
     int keyLim = 10;
@@ -15,7 +15,6 @@ TEST(HashMapTest, InsertGetBasicCorrectness) {
     int key[dataSize];
     for (int i = 0; i < dataSize; i++) {
         data[i] = rand() % dataLim;
-        key[i] = rand() % keyLim;
     }
     for (int i = 0; i < dataSize; i++) {
         hmap->m.insert(hmap, i, &data[i]);
@@ -24,12 +23,81 @@ TEST(HashMapTest, InsertGetBasicCorrectness) {
         int* hgiven = (int*)(hmap->m.get(hmap, i));
         EXPECT_EQ(*hgiven, data[i]);
     }
+    hmap->m.destroy(hmap);
+}
 
-} 
+void mul2(void* mem) {
+    int* data = (int*)mem;
+    *data = (*data)*2;
+}
 
-TEST(HashMapTest, InsertGetLotsOfData) {
+TEST(HashMapTests, ForEach) {
     int dataSize = 20000;
-    int hashBasketsNum = 20;
+    int hashBasketsNum = 300;
+    int keyLim = 15000;
+    int dataLim = 100;
+
+    map* hmap = (map*)create_hashmap(hashBasketsNum);
+    int data[dataSize];
+    int backup[dataSize];
+    srand(time(NULL));
+    int key[dataSize];
+    for (int i = 0; i < dataSize; i++) {
+        data[i] = rand() % dataLim;
+        backup[i] = data[i];
+    }
+    for (int i = 0; i < dataSize; i++) {
+        hmap->m.insert(hmap, i, &data[i]);
+    }
+
+    hmap->m.foreach(hmap, mul2);
+    
+    for (int i = 0; i < dataSize; i++) {
+        int* hgiven = (int*)(hmap->m.get(hmap, i));
+        EXPECT_EQ(*hgiven, backup[i]*2);
+    }
+    hmap->m.destroy(hmap);
+}
+
+int isEven(void* mem) {
+    int a = *((int*)mem);
+    if (a % 2 == 0) return 1;
+    return 0;
+}
+
+TEST(HashMapTests, ForAll) {
+    int dataSize = 20000;
+    int hashBasketsNum = 300;
+    int keyLim = 15000;
+    int dataLim = 100;
+
+    map* hmap = (map*)create_hashmap(hashBasketsNum);
+    int data[dataSize];
+    int backup[dataSize];
+    srand(time(NULL));
+    int key[dataSize];
+    for (int i = 0; i < dataSize; i++) {
+        data[i] = rand() % dataLim;
+        backup[i] = data[i];
+    }
+    for (int i = 0; i < dataSize; i++) {
+        hmap->m.insert(hmap, i, &data[i]);
+    }
+
+    hmap->m.forall(hmap, isEven, mul2);
+    
+    for (int i = 0; i < dataSize; i++) {
+        int* hgiven = (int*)(hmap->m.get(hmap, i));
+        int expected = backup[i];
+        if (expected % 2 == 0) expected *= 2;
+        EXPECT_EQ(*hgiven, expected);
+    }
+    hmap->m.destroy(hmap);
+}
+
+TEST(HashMapTests, InsertRemoveLotsOfData) {
+    int dataSize = 20000;
+    int hashBasketsNum = 100;
     int keyLim = 10;
     int dataLim = 100;
 
@@ -39,7 +107,6 @@ TEST(HashMapTest, InsertGetLotsOfData) {
     int key[dataSize];
     for (int i = 0; i < dataSize; i++) {
         data[i] = rand() % dataLim;
-        key[i] = rand() % keyLim;
     }
     for (int i = 0; i < dataSize; i++) {
         hmap->m.insert(hmap, i, &data[i]);
@@ -47,153 +114,167 @@ TEST(HashMapTest, InsertGetLotsOfData) {
     for (int i = 0; i < dataSize; i++) {
         int* hgiven = (int*)(hmap->m.get(hmap, i));
         EXPECT_EQ(*hgiven, data[i]);
+        EXPECT_EQ(hmap->m.remove(hmap, i), 1);
+        EXPECT_EQ(hmap->m.remove(hmap, i), 0);
     }
-
+    hmap->m.destroy(hmap);
 }
 
-TEST(HashMapTest, WorkWithDublicateKeys) {
-    int dataSize = 5000;
-    int hashBasketsNum = 5;
-    int keyLim = 20;
+TEST(TreeTests, ForEach) {
+    int dataSize = 2000;
+    int keyLim = 1500;
     int dataLim = 100;
 
-    map* hmap = (map*)create_hashmap(hashBasketsNum);
+    map* hmap = (map*)create_treemap();
+    int data[dataSize];
+    int backup[dataSize];
+    srand(time(NULL));
+    int key[dataSize];
+    for (int i = 0; i < dataSize; i++) {
+        data[i] = rand() % dataLim;
+        backup[i] = data[i];
+    }
+    for (int i = 0; i < dataSize; i++) {
+        hmap->m.insert(hmap, i, &data[i]);
+    }
+
+    hmap->m.foreach(hmap, mul2);
+    for (int i = 0; i < dataSize; i++) {
+        int* hgiven = (int*)(hmap->m.get(hmap, i));
+        EXPECT_EQ(*hgiven, backup[i]*2);
+    }
+    hmap->m.destroy(hmap);
+}
+
+TEST(TreeTests, ForAll) {
+    int dataSize = 2000;
+    int keyLim = 1500;
+    int dataLim = 100;
+
+    map* hmap = (map*)create_treemap();
+    int data[dataSize];
+    int backup[dataSize];
+    srand(time(NULL));
+    int key[dataSize];
+    for (int i = 0; i < dataSize; i++) {
+        data[i] = rand() % dataLim;
+        backup[i] = data[i];
+    }
+    for (int i = 0; i < dataSize; i++) {
+        hmap->m.insert(hmap, i, &data[i]);
+    }
+
+    hmap->m.forall(hmap, isEven, mul2);
+    
+    for (int i = 0; i < dataSize; i++) {
+        int* hgiven = (int*)(hmap->m.get(hmap, i));
+        int expected = backup[i];
+        if (expected % 2 == 0) expected *= 2;
+        EXPECT_EQ(*hgiven, expected);
+    }
+}
+
+
+
+TEST(TreeTests, InsertGetBasicCorrectness) {
+    int dataSize = 30000;
+    int keyLim = 15000;
+    int dataLim = 100;
+
+    map* hmap = (map*)create_treemap();
+    int data[dataSize];
+    srand(time(NULL));
+    int key[dataSize];
+    
+    for (int i = 0; i < dataSize; i++) {
+        data[i] = -1;
+    }
+    for (int i = 0; i < dataSize; i++) {
+        int k = rand() % keyLim;
+        data[k] = rand() % dataLim;
+        hmap->m.insert(hmap, k, &data[k]);
+    }
+
+    for (int i = 0; i < dataSize; i++) {
+        if (data[i] != -1) {
+            int* hgiven = (int*)(hmap->m.get(hmap, i));
+            if (hgiven == NULL) {
+                ASSERT_EQ(0, 1);
+            }
+            EXPECT_EQ(*hgiven, data[i]);
+        }
+    }
+} 
+
+TEST(TreeTests, InsertRemoveLotsOfData) {
+    int dataSize = 30000;
+    int keyLim = 15000;
+    int dataLim = 100;
+
+    map* hmap = (map*)create_treemap();
+    int data[dataSize];
+    srand(time(NULL));
+    int key[dataSize];
+    
+    for (int i = 0; i < dataSize; i++) {
+        data[i] = -1;
+    }
+    for (int i = 0; i < dataSize; i++) {
+        int k = rand() % keyLim;
+        data[k] = rand() % dataLim;
+        hmap->m.insert(hmap, k, &data[k]);
+    }
+
+    for (int i = 0; i < dataSize; i++) {
+        if (data[i] != -1) {
+            int* hgiven = (int*)(hmap->m.get(hmap, i));
+            if (hgiven == NULL) {
+                ASSERT_EQ(0, 1);
+            }
+            EXPECT_EQ(*hgiven, data[i]);
+            EXPECT_EQ(hmap->m.remove(hmap, i), 1);
+            EXPECT_EQ(hmap->m.remove(hmap, i), 0);
+        }
+    }
+    hmap->m.destroy(hmap);
+} 
+
+
+TEST(GeneralTests, ImplementationEquility) {
+    int dataSize = 4000;
+    int keyLim = 1500;
+    int dataLim = 100;
+    int baskets_num = 100;
+
+    map* hmap = (map*)create_hashmap(baskets_num);
+    map* tmap = (map*)create_treemap();
     int data[dataSize];
     srand(time(NULL));
     int key[dataSize];
     for (int i = 0; i < dataSize; i++) {
         data[i] = -1;
     }
-
     for (int i = 0; i < dataSize; i++) {
-        int d = rand() % dataLim;
         int k = rand() % keyLim;
-        data[k] = d;
+        data[k] = rand() % dataLim;
         hmap->m.insert(hmap, k, &data[k]);
+        tmap->m.insert(tmap, k, &data[k]);
     }
     for (int i = 0; i < dataSize; i++) {
         if (data[i] != -1) {
             int* hgiven = (int*)(hmap->m.get(hmap, i));
-            EXPECT_EQ(*hgiven, data[i]);
+            int* tgiven = (int*)(tmap->m.get(tmap, i));
+            EXPECT_EQ(*hgiven, *tgiven);
         }
     }
-
-}
-
-
-
-/*
-TEST(MapTest, implementationEquility) {
-    map* hmap = (map*)create_hashmap(5);
-    map* tmap = (map*)create_treemap();
-    int data[10];
-    srand(time(NULL));
-    int key[10];
-    for (int i = 0; i < 10; i++) {
-        data[i] = rand() % 100;
-        key[i] = rand() % 10;
-    }
-    for (int i = 0; i < 10; i++) {
-        hmap->m.insert(hmap, key[i], &data[i]);
-        tmap->m.insert(tmap, key[i], &data[i]);
-    }
-    for (int i = 0; i < 10; i++) {
-        int* hgiven = (int*)(hmap->m.get(hmap, i));
-        int* tgiven = (int*)(tmap->m.get(tmap, i));
-        if (hgiven != NULL && tgiven != NULL) {
-            ASSERT_EQ(*hgiven, *tgiven);
-        }
-    }
-
+    tmap->m.destroy(tmap);
+    hmap->m.destroy(hmap);
 } 
-*/
+
+
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
 
-/*
-TEST(equality,test1) {
-    map* hmap = (map*)create_hashmap(5);
-    map* tmap = (map*)create_treemap();
-    int data[10];
-    srand(time(NULL));
-    int key[10];
-    for (int i = 0; i < 10; i++) {
-        data[i] = rand() % 100;
-        key[i] = rand() % 10;
-    }
-    for (int i = 0; i < 10; i++) {
-        hmap->m.insert(hmap, key[i], &data[i]);
-        tmap->m.insert(tmap, key[i], &data[i]);
-    }
-    for (int i = 0; i < 10; i++) {
-        int* hgiven = (int*)(hmap->m.get(hmap, i));
-        int* tgiven = (int*)(tmap->m.get(tmap, i));
-        if (hgiven != NULL && tgiven != NULL) {
-            ASSERT_EQ(*hgiven, *tgiven);
-        }
-    }
-
-} 
-*/
-/*
-int main(int argc, char** argv) {
-    
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-
-    return 0;
-    map* m = (map*)create_treemap();
-    int data[10];
-    srand(time(NULL));
-    int key[10];
-    for (int i = 0; i < 10; i++) {
-        data[i] = rand() % 100;
-        key[i] = rand() % 10;
-        printf("(%d, %d) ",key[i], data[i]);
-    }
-    printf("\n"); 
-    for (int i = 0; i < 10; i++) {
-        m->m.insert(m, key[i], &data[i]);
-    }
-    for (int i = 0; i < 10; i++) {
-        int* given = (int*)(m->m.get(m, i));
-        if (given != NULL) {
-            printf("%d ", *given);
-        } else {
-            printf("null ");
-        }
-    }
-    printf("\n");
-    ttrace(((tree_private*)m)->root, 0);
-    for (int i = 0; i < 10; i++) {
-        if (m->m.get(m, key[i]) != NULL) {
-            printf("\n");
-            printf("del: %d \n", key[i]);
-            m->m.remove(m, key[i]);
-            ttrace(((tree_private*)m)->root, 0);
-        } 
-    }
-    
-    
-    printf("\n");
-    for (int i = 0; i < 5; i++) {
-        m->m.remove(m, (i*13*19)%10);
-        printf("%d ", (i*13*19)%10);
-    }
-    printf("\n");
-
-    for (int i = 0; i < 10; i++) {
-        int* given = (int*)(m->m.get(m, i));
-        if (given != NULL) {
-            printf("(%d, %d) ",i, *given);
-        } else {
-            printf("null ");
-        }
-    }
-    printf("\n");
-}
-
-*/

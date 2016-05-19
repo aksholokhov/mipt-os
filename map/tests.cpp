@@ -2,35 +2,61 @@
 #include "stdlib.h"
 #include <gtest/gtest.h>
  
- 
-TEST(HashMapTests, InsertGetBasicCorrectness) {
-    int dataSize = 10;
-    int hashBasketsNum = 5;
-    int keyLim = 10;
-    int dataLim = 100;
+/*
+ * This is a bunch of tests for my map library implemented in "map.c". Also it
+ * was done as an academic task for studying Google Test framework.
+ *
+ * NOTE: All tests are REALLY simular: same structure, same variables. So, I'll
+ * comment it on in detalis just in the first time.
+ */
 
+/*
+ * Check basic "put-get" correctness: compare given with inserted before
+ */
+TEST(HashMapTests, InsertGetBasicCorrectness) {
+    int dataSize = 10; // Number of (key, value) pair aquiring from random (normal) distribution         
+    int hashBasketsNum = 5; // Number of buskets in hashmap used in test
+    int keyLim = 10;    // Upper bound of key value.
+    int dataLim = 100;  //Upper bound of "value" value.
+
+    // Create map for testing. It could be hash table or searching tree,
+    // according to the interface.
     map* hmap = (map*)create_hashmap(hashBasketsNum);
-    int data[dataSize];
-    srand(time(NULL));
-    int key[dataSize];
+    int data[dataSize]; // Create data storage. 
+    srand(time(NULL));  // Prepare random generator
+    int key[dataSize];  //
+    
+    // Fill in data array with random values 
     for (int i = 0; i < dataSize; i++) {
         data[i] = rand() % dataLim;
     }
+
+    // Insert (K, V) = (i, data[i]) pairs in the tree. Note that in this case
+    // all keys are different and ordered. It's not a common for all tests.
     for (int i = 0; i < dataSize; i++) {
         hmap->m.insert(hmap, i, &data[i]);
     }
+
+    // Get V by K from the tree and compare to the data sored in data array.
     for (int i = 0; i < dataSize; i++) {
         int* hgiven = (int*)(hmap->m.get(hmap, i));
         EXPECT_EQ(*hgiven, data[i]);
     }
+
+    // Destroy hashmap
     hmap->m.destroy(hmap);
 }
 
+/* Dummy func for "ForEach" and "ForAll" testing */
 void mul2(void* mem) {
     int* data = (int*)mem;
     *data = (*data)*2;
 }
 
+/* Test for ForEach function in hash table implementation. Puts array of (K, V)
+ * pairs to the map, multiplies everything by 2 applying the mul2 func, and
+ * compares everything with backup.
+ */ 
 TEST(HashMapTests, ForEach) {
     int dataSize = 20000;
     int hashBasketsNum = 300;
@@ -59,12 +85,19 @@ TEST(HashMapTests, ForEach) {
     hmap->m.destroy(hmap);
 }
 
+/*
+ * Dummy predicate for ForAll testing
+ */
 int isEven(void* mem) {
     int a = *((int*)mem);
     if (a % 2 == 0) return 1;
     return 0;
 }
 
+/* Test for ForAll function in hash table implementation. Puts array of (K, V)
+ * pairs to the map, multiplies all even values by 2 applying the mul2 func, and
+ * compares everything with backup.
+ */ 
 TEST(HashMapTests, ForAll) {
     int dataSize = 20000;
     int hashBasketsNum = 300;
@@ -95,9 +128,13 @@ TEST(HashMapTests, ForAll) {
     hmap->m.destroy(hmap);
 }
 
+/*
+ * Just a large scale test for establishing general efficiency of hash map
+ * implementation. Also check for removing correctness.
+ */
 TEST(HashMapTests, InsertRemoveLotsOfData) {
     int dataSize = 20000;
-    int hashBasketsNum = 100;
+    int hashBasketsNum = 200;
     int keyLim = 10;
     int dataLim = 100;
 
@@ -119,6 +156,13 @@ TEST(HashMapTests, InsertRemoveLotsOfData) {
     }
     hmap->m.destroy(hmap);
 }
+
+/* =============================================================================
+ *  NOTE: there are same several tests for tree implementation of map
+ *  structure. Because of common interface, this code is just a copy-paste from
+ *  above. I won't comment it just because it's literally the same code.
+ * =============================================================================
+ */
 
 TEST(TreeTests, ForEach) {
     int dataSize = 2000;

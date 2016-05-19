@@ -3,37 +3,70 @@
 #include "unistd.h"
 #include "time.h"
 
+/*
+    This small library contains implementation of "map" data structure. It has a common interface and two 
+    implementations: based on has table and search binary tree. It was done as an academic project aimed
+    to emulate polymorphism and incapsulation on C.
+
+    Both implementations works according to the well-known algorithms (written in Wikipedia, for example), 
+    so I won't describe the mechanics in comments - only several task-specific decisions.
+
+    P.S. CT department guys, don't laugh a lot, I'd had to do this :)  
+*/
+
+/*
+    Map interface.
+*/
 typedef struct map_methods {
-    void (*insert)(void*, int, void*);
-    void* (*get)(void*, int);
-    int (*remove)(void*, int);
-    void (*destroy)(void*);
-    void (*forall)(void*, int (*predicate)(void*), void (*func)(void*));
-    void (*foreach)(void*, void (*func)(void*));
+    void (*insert)(void*, int, void*);          // insert pair (K, V) to map. If node with K is present, change it's value to V
+    void* (*get)(void*, int);                   // get value (V) by key (K) from map
+    int (*remove)(void*, int);                  // remove element by K from map. Return: 1 if element removed, 0 otherwise
+    void (*destroy)(void*);                     // destructor for map. Because of missing kinda "this()" in C, needs passing itself as an argument
+    void (*forall)(void*, int (*predicate)(void*), void (*func)(void*));    // inplace transform all V, satisying predicate, to func(V)
+    void (*foreach)(void*, void (*func)(void*));                            // implace transform all V to func(V)
 } map_methods;
 
+/*
+ * Kind of "trait" in Scala: additional interface to tree structure
+ */
 typedef struct tree_methods {
-    //ordered by key, values in    
+    //it's emmpty, because it's not important for the task :) 
 } tree_methods;
 
+/*
+ * The same for hash map 
+ */
 typedef struct hashmap_methods {
     
 } hashmap_methods;
 
+/*
+ * "Public" tree struct. Implements map and tree interfaces
+ */
 typedef struct tree {
     map_methods m;
     tree_methods t;
 } tree;
 
+/*
+ * "Public" hashmap struct. Implements map and hashmap interfaces
+ */
 typedef struct hashmap {
     map_methods m;
     hashmap_methods h;
 } hashmap;
 
+/*
+ * An "abstract class" - map. It has no own constructor, but it could be cast
+ * to tree, hashmap and vica-versa 
+ */
 typedef struct map {
     map_methods m;
 } map;
 
+/*
+ * Tree node class.
+ */
 typedef struct node {
     int key;
     void* value;
@@ -42,28 +75,42 @@ typedef struct node {
     struct node* par;
 } node;
 
+/*
+ * "Private" part of tree class. Contains a "private" field - root - link to
+ * first node in tree. May be NULL. 
+ */
 typedef struct tree_private {
     map_methods m;
     tree_methods t;
     node* root;
 } tree_private;
 
+/*
+ * A node for hashmap baskets. 
+ */
 typedef struct hash_node {
     int key;
     void* value;
     struct hash_node* next;
 } h_node;
 
+/*
+ * "Private" part of hashmap class. Contains two "private" fields: data and
+ * size
+ */
 typedef struct hashmap_private {
     map_methods m;
     hashmap_methods h;
-    h_node** data;
-    int size;
+    h_node** data;  // array of baskets: linked lists for maintaining hash collisions.
+    int size;       // num of baskets in hashmap (the same - size of data array).
 } hashmap_private;
 
+/*
+ * Insert function for hashtable implementation of map.
+ */
 void h_insert(void* mem, int key, void* value) {
     hashmap_private* hmap = (hashmap_private*)mem;
-    int pos = key % hmap->size;
+    int pos = key % hmap->size;     //Super-Innovative-Smart hash-function - just a modulo by size of the table
     h_node* current = hmap->data[pos];
     if (current == NULL) {
         h_node* new_node = (h_node*)malloc(sizeof(h_node));
@@ -90,6 +137,9 @@ void h_insert(void* mem, int key, void* value) {
         current->next = new_node;
     }
 }
+
+//helping recursive function for hashmap destructor. Deletes a node and it's
+//children
 void h_free(h_node* n) {
     if (n->next != NULL) {
         h_free(n->next);
@@ -97,6 +147,9 @@ void h_free(h_node* n) {
     free(n);
 }
 
+/*
+ * Hashmap destructor
+ */
 void h_destroy(void* mem) {
     hashmap_private* hmap = (hashmap_private*)mem;
     for (int i = 0; i < hmap->size; i++) {
@@ -105,6 +158,9 @@ void h_destroy(void* mem) {
     free(mem);
 }
 
+/*
+ * Hashmap get-by-key function. returns *value of key. NULL otherwise 
+ */
 void* h_get(void* mem, int key) {
     hashmap_private* hmap = (hashmap_private*)mem;
     int pos = key % hmap->size;
@@ -122,6 +178,9 @@ void* h_get(void* mem, int key) {
     }
 }
 
+/*
+ * Remove value from map by key. 1 if removed, 0 otherwise
+ */
 int h_remove(void* mem, int key) {
     hashmap_private* hmap = (hashmap_private*)mem;
     int pos = key % hmap->size;
@@ -151,6 +210,9 @@ int h_remove(void* mem, int key) {
     return deleted;
 }
 
+/* 
+ * Hashmap "ForAll" function. Apply func to all V satisfying predicate
+ */
 void h_forall(void* mem, int (*predicate)(void*), void (*func)(void*)) {
     hashmap_private* hmap = (hashmap_private*)mem;
     for (int i = 0; i < hmap->size; i++) {
@@ -162,6 +224,9 @@ void h_forall(void* mem, int (*predicate)(void*), void (*func)(void*)) {
     }
 }
 
+/*
+ * Hashmap "ForEach" function. Apply func to all V.
+ */
 void h_foreach(void* mem, void (*func)(void*)) {
     hashmap_private* hmap = (hashmap_private*)mem;
     for (int i = 0; i < hmap->size; i++) {
@@ -172,6 +237,13 @@ void h_foreach(void* mem, void (*func)(void*)) {
         }
     }
 }
+
+/*
+ * Hashmap constructor.
+ * ARGS:
+ *  size - number of baskets in hash table. The bigger it is, the faster it
+ *  works.
+ */
 
 hashmap* create_hashmap(int size) {
     hashmap_private* hmap = (hashmap_private*)malloc(sizeof(hashmap_private));
@@ -190,6 +262,10 @@ hashmap* create_hashmap(int size) {
     return (hashmap*)hmap;
 }
 
+/*
+ * Insert new (K, V) pair to the tree. If K is present in tree - change value
+ * to V
+ */
 void t_insert(void* mem, int key, void* value) {
     tree_private* t = (tree_private*)mem;
     node* current = t->root;
@@ -226,6 +302,9 @@ void t_insert(void* mem, int key, void* value) {
     }
 }
 
+/*
+ * Get value by key from tree
+ */
 void* t_get(void* mem, int key) {
     tree_private* t = (tree_private*)mem;
     node* current = t->root;
@@ -249,6 +328,10 @@ void* t_get(void* mem, int key) {
     }
 }
 
+/*
+ *  Remove node by key from tree. 1 if removed, 0 otherwise.
+ *  Written in non-recursive style because of 32K stack depth limit.
+ */
 int t_remove(void* mem, int key) {
     tree_private* t = (tree_private*)mem;
     node* current = t->root;
@@ -317,6 +400,10 @@ int t_remove(void* mem, int key) {
     return 0;
 }
 
+/*
+ * Helping recursive function for tree destructor. Destroys node and it's
+ * children
+ */
 void t_free(node* n) {
     if (n->left != NULL) {
         t_free(n->left);
@@ -328,6 +415,10 @@ void t_free(node* n) {
     n->right = NULL;
     free(n);
 }
+
+/* Just helper for tree debugging. Displays tree structure in text
+ * representation.
+ */
 void ttrace(node* n, int depth) {
     for (int i = 0; i < depth; i++) {
         printf(" ");
@@ -340,6 +431,7 @@ void ttrace(node* n, int depth) {
     if (n->right != NULL) ttrace(n->right, depth+1);
 }
 
+/* Tree destructor */
 void t_destroy(void* mem) {
     tree_private* t = (tree_private*)mem;
     if (t->root != NULL) {
@@ -348,10 +440,10 @@ void t_destroy(void* mem) {
     free(mem);
 }
 
+/* Helper for tree "ForAll" and "ForEach" functions. Applies func to value,
+ * satisfying predicate, and for children, recursively
+ */
 void dfs_apply(node* n, int (*predicate)(void*), void (*func)(void*)) {
-    //int i = 1;
-    //func(&i);
-    //printf("pred: %d\n", predicate(&i));
     if (predicate(n->value) == 1) {
         func(n->value);
     }
@@ -363,21 +455,24 @@ void dfs_apply(node* n, int (*predicate)(void*), void (*func)(void*)) {
     }
 }
 
-
+/* Dummy predicate for "ForEach" tree function */
 int alwaysTrue(void* mem) {
     return 1;
 }
 
+/* Tree "ForAll" function */
 void t_forall(void* mem, int (*predicate)(void*), void (*func)(void*)) {
     tree_private* t = (tree_private*)mem;
     if (t->root != NULL) dfs_apply(t->root, predicate, func);
 }
 
+/* Tree "ForEach" function */
 void t_foreach(void* mem, void (*func)(void*)) {
     tree_private* t = (tree_private*)mem;
     if (t->root != NULL) dfs_apply(t->root, alwaysTrue, func);
 }
 
+/* Tree constructor */
 tree* create_treemap() {
     tree_private* tmap = (tree_private*)malloc(sizeof(tree_private));
     tmap->m.insert = t_insert;
